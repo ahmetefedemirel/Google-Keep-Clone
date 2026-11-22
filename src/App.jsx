@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Header } from './components/Header';
+import { LabelFilterBar } from './components/LabelFilterBar';
 import { NoteCreator } from './components/NoteCreator';
 import { NoteGrid } from './components/NoteGrid';
 import { NoteModal } from './components/NoteModal';
@@ -10,6 +11,9 @@ export default function App() {
     notes,
     pinnedNotes,
     otherNotes,
+    availableLabels,
+    selectedLabel,
+    setSelectedLabel,
     searchQuery,
     setSearchQuery,
     addNote,
@@ -17,6 +21,7 @@ export default function App() {
     deleteNote,
     togglePin,
     changeColor,
+    changeLabels,
   } = useNotes();
 
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -42,15 +47,24 @@ export default function App() {
       />
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        <NoteCreator onCreateNote={addNote} />
+        <NoteCreator onCreateNote={addNote} availableLabels={availableLabels} />
+
+        <LabelFilterBar
+          labels={availableLabels}
+          selectedLabel={selectedLabel}
+          onSelectLabel={setSelectedLabel}
+        />
 
         <NoteGrid
           pinnedNotes={pinnedNotes}
           otherNotes={otherNotes}
+          availableLabels={availableLabels}
           hasSearchQuery={Boolean(searchQuery.trim())}
+          selectedLabel={selectedLabel}
           onSelectNote={setEditingNoteId}
           onTogglePin={togglePin}
           onChangeColor={changeColor}
+          onChangeLabels={changeLabels}
           onDeleteNote={handleDeleteNote}
         />
       </main>
@@ -59,7 +73,9 @@ export default function App() {
         <NoteModal
           key={editingNote.id}
           note={editingNote}
+          availableLabels={availableLabels}
           onSave={updateNote}
+          onChangeLabels={changeLabels}
           onDelete={handleDeleteNote}
           onClose={() => setEditingNoteId(null)}
         />

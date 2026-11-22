@@ -9,18 +9,107 @@ export function createNoteId() {
 }
 
 /**
- * Filters notes by Turkish-locale case-insensitive query across title and content.
+ * Safely normalizes a note's labels array with trimming and Turkish case-insensitive deduplication.
  */
-export function filterNotes(notes, query) {
-  const normalizedQuery = query.trim().toLocaleLowerCase('tr');
-  if (!normalizedQuery) {
+export function normalizeLabels(labels) {
+  if (!Array.isArray(labels)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const normalized = [];
+
+  for (const rawLabel of labels) {
+    if (typeof rawLabel !== 'string') continue;
+    const trimmed = rawLabel.trim();
+    if (!trimmed) continue;
+
+    const key = trimmed.toLocaleLowerCase('tr');
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    normalized.push(trimmed);
+  }
+
+  return normalized;
+}
+
+/**
+ * Checks whether two label lists contain the same normalized labels in order.
+ */
+export function areLabelsEqual(first, second) {
+  const normalizedFirst = normalizeLabels(first);
+  const normalizedSecond = normalizeLabels(second);
+
+  if (normalizedFirst.length !== normalizedSecond.length) {
+    return false;
+  }
+
+  return normalizedFirst.every((label, index) => label === normalizedSecond[index]);
+}
+
+/**
+ * Extracts a sorted, deduplicated list of all labels currently used across notes.
+ */
+export function getUniqueLabels(notes) {
+  if (!Array.isArray(notes)) {
+    return [];
+  }
+
+  const labelMap = new Map();
+
+  for (const note of notes) {
+    const noteLabels = normalizeLabels(note?.labels);
+    for (const label of noteLabels) {
+      const key = label.toLocaleLowerCase('tr');
+      if (!labelMap.has(key)) {
+        labelMap.set(key, label);
+      }
+    }
+  }
+
+  return Array.from(labelMap.values()).sort((a, b) =>
+    a.localeCompare(b, 'tr', { sensitivity: 'base' })
+  );
+}
+
+/**
+ * Filters notes by selected label and Turkish-locale case-insensitive query across title, content, and labels.
+ */
+export function filterNotes(notes, query = '', selectedLabel = null) {
+  const normalizedSelectedLabel =
+    typeof selectedLabel === 'string' && selectedLabel.trim()
+      ? selectedLabel.trim().toLocaleLowerCase('tr')
+      : null;
+  const normalizedQuery = typeof query === 'string' ? query.trim().toLocaleLowerCase('tr') : '';
+
+  if (!normalizedSelectedLabel && !normalizedQuery) {
     return notes;
   }
 
   return notes.filter((note) => {
-    const title = (note.title || '').toLocaleLowerCase('tr');
-    const content = (note.content || '').toLocaleLowerCase('tr');
-    return title.includes(normalizedQuery) || content.includes(normalizedQuery);
+    const noteLabels = normalizeLabels(note?.labels);
+
+    if (normalizedSelectedLabel) {
+      const hasSelectedLabel = noteLabels.some(
+        (label) => label.toLocaleLowerCase('tr') === normalizedSelectedLabel
+      );
+      if (!hasSelectedLabel) {
+        return false;
+      }
+    }
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    const title = (note?.title || '').toLocaleLowerCase('tr');
+    const content = (note?.content || '').toLocaleLowerCase('tr');
+    const matchesLabel = noteLabels.some((label) =>
+      label.toLocaleLowerCase('tr').includes(normalizedQuery)
+    );
+
+    return title.includes(normalizedQuery) || content.includes(normalizedQuery) || matchesLabel;
   });
 }
 

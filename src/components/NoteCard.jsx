@@ -1,9 +1,27 @@
-import { Pin, PinOff, Trash2 } from 'lucide-react';
+import { Pin, PinOff, Trash2, X } from 'lucide-react';
 import { getNoteColor } from '../utils/colors';
 import { ColorPicker } from './ColorPicker';
+import { LabelPicker } from './LabelPicker';
 
-export function NoteCard({ note, onSelect, onTogglePin, onChangeColor, onDelete }) {
+export function NoteCard({
+  note,
+  availableLabels = [],
+  onSelect,
+  onTogglePin,
+  onChangeColor,
+  onChangeLabels,
+  onDelete,
+}) {
   const colorTheme = getNoteColor(note.color);
+  const labels = Array.isArray(note.labels) ? note.labels : [];
+
+  function handleRemoveLabel(event, labelToRemove) {
+    event.stopPropagation();
+    onChangeLabels(
+      note.id,
+      labels.filter((label) => label !== labelToRemove)
+    );
+  }
 
   function handleCardKeyDown(event) {
     if (event.target !== event.currentTarget) return;
@@ -34,6 +52,28 @@ export function NoteCard({ note, onSelect, onTogglePin, onChangeColor, onDelete 
         )}
       </div>
 
+      {labels.length > 0 && (
+        <div className="mb-2.5 flex flex-wrap gap-1.5">
+          {labels.map((label) => (
+            <span
+              key={label}
+              className="inline-flex max-w-full items-center gap-1 rounded-full bg-black/6 py-0.5 pl-2.5 pr-1.5 text-xs font-medium text-slate-700"
+            >
+              <span className="truncate">{label}</span>
+              <button
+                type="button"
+                onClick={(event) => handleRemoveLabel(event, label)}
+                aria-label={`${label} etiketini kaldır`}
+                title={`${label} etiketini kaldır`}
+                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-black/10 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-amber-500"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       <button
         type="button"
         onClick={(event) => {
@@ -56,10 +96,17 @@ export function NoteCard({ note, onSelect, onTogglePin, onChangeColor, onDelete 
         className="flex items-center justify-between pt-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
         onClick={(event) => event.stopPropagation()}
       >
-        <ColorPicker
-          selectedColor={note.color}
-          onSelectColor={(nextColor) => onChangeColor(note.id, nextColor)}
-        />
+        <div className="flex items-center gap-1">
+          <ColorPicker
+            selectedColor={note.color}
+            onSelectColor={(nextColor) => onChangeColor(note.id, nextColor)}
+          />
+          <LabelPicker
+            selectedLabels={labels}
+            availableLabels={availableLabels}
+            onChangeLabels={(nextLabels) => onChangeLabels(note.id, nextLabels)}
+          />
+        </div>
 
         <button
           type="button"

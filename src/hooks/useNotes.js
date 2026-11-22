@@ -1,21 +1,51 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import { DEFAULT_COLOR_ID } from '../utils/colors';
-import { createNoteId, filterNotes, partitionNotes } from '../utils/noteHelpers';
+import {
+  areLabelsEqual,
+  createNoteId,
+  filterNotes,
+  getUniqueLabels,
+  normalizeLabels,
+  partitionNotes,
+} from '../utils/noteHelpers';
 
 const STORAGE_KEY = 'keep_clone_notes_v1';
 
 /**
- * Manages note CRUD, pin state, color selection, search filtering, and localStorage persistence.
+ * Manages note CRUD, pin state, color selection, labels, search/label filtering, and localStorage persistence.
  */
 export function useNotes() {
   const [rawNotes, setRawNotes] = useLocalStorage(STORAGE_KEY, []);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLabel, setSelectedLabel] = useState(null);
 
-  const notes = useMemo(() => (Array.isArray(rawNotes) ? rawNotes : []), [rawNotes]);
+  const notes = useMemo(() => {
+    if (!Array.isArray(rawNotes)) return [];
+    return rawNotes.map((note) => ({
+      ...note,
+      labels: normalizeLabels(note?.labels),
+    }));
+  }, [rawNotes]);
+
+  const availableLabels = useMemo(() => getUniqueLabels(notes), [notes]);
+
+  const activeLabel = useMemo(() => {
+    if (!selectedLabel) return null;
+    const normalizedSelected = selectedLabel.toLocaleLowerCase('tr');
+    return (
+      availableLabels.find((label) => label.toLocaleLowerCase('tr') === normalizedSelected) ?? null
+    );
+  }, [selectedLabel, availableLabels]);
+
+  useEffect(() => {
+    if (selectedLabel && !activeLabel) {
+      setSelectedLabel(null);
+    }
+  }, [selectedLabel, activeLabel]);
 
   const addNote = useCallback(
-    ({ title = '', content = '', color = DEFAULT_COLOR_ID, isPinned = false }) => {
+    ({ title = '', content = '', color = DEFAULT_COLOR_ID, isPinned = false, labels = [] }) => {
       const trimmedTitle = title.trim();
       const trimmedContent = content.trim();
 
@@ -30,6 +60,7 @@ export function useNotes() {
         content: trimmedContent,
         color,
         isPinned: Boolean(isPinned),
+        labels: normalizeLabels(labels),
         createdAt: now,
         updatedAt: now,
       };
@@ -47,16 +78,20 @@ export function useNotes() {
         return list.map((note) => {
           if (note.id !== id) return note;
 
+          const currentLabels = normalizeLabels(note.labels);
           const nextTitle = updates.title !== undefined ? updates.title.trim() : note.title;
           const nextContent = updates.content !== undefined ? updates.content.trim() : note.content;
           const nextColor = updates.color !== undefined ? updates.color : note.color;
           const nextPinned = updates.isPinned !== undefined ? Boolean(updates.isPinned) : note.isPinned;
+          const nextLabels =
+            updates.labels !== undefined ? normalizeLabels(updates.labels) : currentLabels;
 
           const hasChanged =
             nextTitle !== note.title ||
             nextContent !== note.content ||
             nextColor !== note.color ||
-            nextPinned !== note.isPinned;
+            nextPinned !== note.isPinned ||
+            !areLabelsEqual(currentLabels, nextLabels);
 
           if (!hasChanged) return note;
 
@@ -66,6 +101,7 @@ export function useNotes() {
             content: nextContent,
             color: nextColor,
             isPinned: nextPinned,
+            labels: nextLabels,
             updatedAt: Date.now(),
           };
         });
@@ -109,9 +145,29 @@ export function useNotes() {
     [setRawNotes]
   );
 
+  const changeLabels = useCallback(
+    (id, labels) => {
+      const nextLabels = normalizeLabels(labels);
+      setRawNotes((prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        return list.map((note) => {
+          if (note.id !== id) return note;
+          const currentLabels = normalizeLabels(note.labels);
+          if (areLabelsEqual(currentLabels, nextLabels)) return note;
+          return {
+            ...note,
+            labels: nextLabels,
+            updatedAt: Date.now(),
+          };
+        });
+      });
+    },
+    [setRawNotes]
+  );
+
   const filteredNotes = useMemo(
-    () => filterNotes(notes, searchQuery),
-    [notes, searchQuery]
+    () => filterNotes(notes, searchQuery, activeLabel),
+    [notes, searchQuery, activeLabel]
   );
 
   const { pinnedNotes, otherNotes } = useMemo(
@@ -123,6 +179,9 @@ export function useNotes() {
     notes,
     pinnedNotes,
     otherNotes,
+    availableLabels,
+    selectedLabel: activeLabel,
+    setSelectedLabel,
     searchQuery,
     setSearchQuery,
     addNote,
@@ -130,5 +189,6 @@ export function useNotes() {
     deleteNote,
     togglePin,
     changeColor,
+    changeLabels,
   };
 }

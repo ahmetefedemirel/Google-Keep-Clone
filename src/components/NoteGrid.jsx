@@ -4,9 +4,11 @@ import { NoteCard } from './NoteCard';
 function NoteSection({
   heading,
   notes,
+  availableLabels,
   onSelectNote,
   onTogglePin,
   onChangeColor,
+  onChangeLabels,
   onDeleteNote,
 }) {
   return (
@@ -21,9 +23,11 @@ function NoteSection({
           <NoteCard
             key={note.id}
             note={note}
+            availableLabels={availableLabels}
             onSelect={onSelectNote}
             onTogglePin={onTogglePin}
             onChangeColor={onChangeColor}
+            onChangeLabels={onChangeLabels}
             onDelete={onDeleteNote}
           />
         ))}
@@ -35,27 +39,39 @@ function NoteSection({
 export function NoteGrid({
   pinnedNotes,
   otherNotes,
+  availableLabels = [],
   hasSearchQuery,
+  selectedLabel = null,
   onSelectNote,
   onTogglePin,
   onChangeColor,
+  onChangeLabels,
   onDeleteNote,
 }) {
   const hasPinned = pinnedNotes.length > 0;
   const hasOther = otherNotes.length > 0;
+  const hasLabelFilter = Boolean(selectedLabel);
+  const hasAnyFilter = hasSearchQuery || hasLabelFilter;
 
   if (!hasPinned && !hasOther) {
+    let emptyTitle = 'Henüz not eklenmedi';
+    if (hasSearchQuery && hasLabelFilter) {
+      emptyTitle = 'Bu etiket ve aramayla eşleşen not bulunamadı';
+    } else if (hasLabelFilter) {
+      emptyTitle = 'Bu etikete ait not bulunamadı';
+    } else if (hasSearchQuery) {
+      emptyTitle = 'Aramanızla eşleşen not bulunamadı';
+    }
+
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-          {hasSearchQuery ? <Search className="h-8 w-8" /> : <StickyNote className="h-8 w-8" />}
+          {hasAnyFilter ? <Search className="h-8 w-8" /> : <StickyNote className="h-8 w-8" />}
         </div>
-        <p className="text-base font-medium text-slate-600">
-          {hasSearchQuery ? 'Aramanızla eşleşen not bulunamadı' : 'Henüz not eklenmedi'}
-        </p>
+        <p className="text-base font-medium text-slate-600">{emptyTitle}</p>
         <p className="mt-1 text-sm text-slate-400">
-          {hasSearchQuery
-            ? 'Farklı bir anahtar kelime deneyin.'
+          {hasAnyFilter
+            ? 'Farklı bir etiket veya anahtar kelime deneyin.'
             : 'Yukarıdaki alandan ilk notunuzu oluşturun.'}
         </p>
       </div>
@@ -68,9 +84,11 @@ export function NoteGrid({
         <NoteSection
           heading="SABİTLENENLER"
           notes={pinnedNotes}
+          availableLabels={availableLabels}
           onSelectNote={onSelectNote}
           onTogglePin={onTogglePin}
           onChangeColor={onChangeColor}
+          onChangeLabels={onChangeLabels}
           onDeleteNote={onDeleteNote}
         />
       )}
@@ -79,9 +97,11 @@ export function NoteGrid({
         <NoteSection
           heading={hasPinned ? 'DİĞERLERİ' : null}
           notes={otherNotes}
+          availableLabels={availableLabels}
           onSelectNote={onSelectNote}
           onTogglePin={onTogglePin}
           onChangeColor={onChangeColor}
+          onChangeLabels={onChangeLabels}
           onDeleteNote={onDeleteNote}
         />
       )}

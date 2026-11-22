@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pin, PinOff } from 'lucide-react';
 import { DEFAULT_COLOR_ID, getNoteColor } from '../utils/colors';
 import { ColorPicker } from './ColorPicker';
+import { LabelInput } from './LabelInput';
 
-export function NoteCreator({ onCreateNote }) {
+export function NoteCreator({ onCreateNote, availableLabels = [] }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [color, setColor] = useState(DEFAULT_COLOR_ID);
   const [isPinned, setIsPinned] = useState(false);
+  const [labels, setLabels] = useState([]);
 
   const containerRef = useRef(null);
   const contentInputRef = useRef(null);
@@ -18,15 +20,16 @@ export function NoteCreator({ onCreateNote }) {
     setContent('');
     setColor(DEFAULT_COLOR_ID);
     setIsPinned(false);
+    setLabels([]);
     setIsExpanded(false);
   }, []);
 
   const commitAndClose = useCallback(() => {
     if (title.trim() || content.trim()) {
-      onCreateNote({ title, content, color, isPinned });
+      onCreateNote({ title, content, color, isPinned, labels });
     }
     resetForm();
-  }, [title, content, color, isPinned, onCreateNote, resetForm]);
+  }, [title, content, color, isPinned, labels, onCreateNote, resetForm]);
 
   useEffect(() => {
     if (!isExpanded) return undefined;
@@ -106,6 +109,14 @@ export function NoteCreator({ onCreateNote }) {
               rows={3}
               className="w-full resize-none bg-transparent px-4 py-2.5 text-sm leading-relaxed text-slate-800 placeholder:text-slate-500 focus:outline-none"
             />
+
+            <div className="px-4 pb-2">
+              <LabelInput
+                labels={labels}
+                availableLabels={availableLabels}
+                onChange={setLabels}
+              />
+            </div>
 
             <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
               <div className="flex items-center gap-1">

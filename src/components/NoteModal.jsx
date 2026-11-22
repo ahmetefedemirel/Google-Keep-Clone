@@ -3,20 +3,34 @@ import { Pin, PinOff, Trash2 } from 'lucide-react';
 import { DEFAULT_COLOR_ID, getNoteColor } from '../utils/colors';
 import { formatNoteDate } from '../utils/noteHelpers';
 import { ColorPicker } from './ColorPicker';
+import { LabelInput } from './LabelInput';
 
-export function NoteModal({ note, onSave, onDelete, onClose }) {
+export function NoteModal({
+  note,
+  availableLabels = [],
+  onSave,
+  onChangeLabels,
+  onDelete,
+  onClose,
+}) {
   const [title, setTitle] = useState(note.title || '');
   const [content, setContent] = useState(note.content || '');
   const [color, setColor] = useState(note.color || DEFAULT_COLOR_ID);
   const [isPinned, setIsPinned] = useState(Boolean(note.isPinned));
+  const [labels, setLabels] = useState(() => (Array.isArray(note.labels) ? note.labels : []));
 
   const dialogRef = useRef(null);
   const isDeletingRef = useRef(false);
-  const draftRef = useRef({ title, content, color, isPinned });
+  const draftRef = useRef({ title, content, color, isPinned, labels });
 
   useEffect(() => {
-    draftRef.current = { title, content, color, isPinned };
-  }, [title, content, color, isPinned]);
+    draftRef.current = { title, content, color, isPinned, labels };
+  }, [title, content, color, isPinned, labels]);
+
+  function handleLabelsChange(nextLabels) {
+    setLabels(nextLabels);
+    onChangeLabels?.(note.id, nextLabels);
+  }
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -133,6 +147,14 @@ export function NoteModal({ note, onSave, onDelete, onClose }) {
           rows={7}
           className="max-h-[55vh] w-full resize-y bg-transparent px-5 py-3 text-sm leading-relaxed text-slate-800 placeholder:text-slate-500 focus:outline-none"
         />
+
+        <div className="px-5 pb-3">
+          <LabelInput
+            labels={labels}
+            availableLabels={availableLabels}
+            onChange={handleLabelsChange}
+          />
+        </div>
 
         {formattedDate && (
           <div className="px-5 pb-2 text-right text-xs text-slate-500">
