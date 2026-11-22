@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pin, PinOff, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pin, PinOff, Trash2 } from 'lucide-react';
 import { DEFAULT_COLOR_ID, getNoteColor } from '../utils/colors';
 import { formatNoteDate } from '../utils/noteHelpers';
 import { ColorPicker } from './ColorPicker';
@@ -17,15 +17,16 @@ export function NoteModal({
   const [content, setContent] = useState(note.content || '');
   const [color, setColor] = useState(note.color || DEFAULT_COLOR_ID);
   const [isPinned, setIsPinned] = useState(Boolean(note.isPinned));
+  const [isHidden, setIsHidden] = useState(Boolean(note.isHidden));
   const [labels, setLabels] = useState(() => (Array.isArray(note.labels) ? note.labels : []));
 
   const dialogRef = useRef(null);
   const isDeletingRef = useRef(false);
-  const draftRef = useRef({ title, content, color, isPinned, labels });
+  const draftRef = useRef({ title, content, color, isPinned, isHidden, labels });
 
   useEffect(() => {
-    draftRef.current = { title, content, color, isPinned, labels };
-  }, [title, content, color, isPinned, labels]);
+    draftRef.current = { title, content, color, isPinned, isHidden, labels };
+  }, [title, content, color, isPinned, isHidden, labels]);
 
   function handleLabelsChange(nextLabels) {
     setLabels(nextLabels);
@@ -74,15 +75,16 @@ export function NoteModal({
 
     return () => {
       cleanupBackdrop();
-      if (dialog.open) {
-        dialog.close();
-      }
     };
   }, [note.id]);
 
   function handleDialogClose() {
-    if (dialogRef.current) {
-      dialogRef.current.returnValue = '';
+    const dialog = dialogRef.current;
+    if (dialog?.open) {
+      return;
+    }
+    if (dialog) {
+      dialog.returnValue = '';
     }
 
     if (!isDeletingRef.current) {
@@ -165,6 +167,18 @@ export function NoteModal({
         <div className="flex items-center justify-between border-t border-black/8 px-4 py-2.5">
           <div className="flex items-center gap-1">
             <ColorPicker selectedColor={color} onSelectColor={setColor} />
+            <button
+              type="button"
+              onClick={() => setIsHidden((prev) => !prev)}
+              aria-label={isHidden ? 'Gizliden çıkar' : 'Gizle'}
+              aria-pressed={isHidden}
+              title={isHidden ? 'Gizliden çıkar' : 'Gizle'}
+              className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/8 focus-visible:outline-2 focus-visible:outline-amber-500 ${
+                isHidden ? 'bg-black/8 text-slate-900' : 'text-slate-600'
+              }`}
+            >
+              {isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            </button>
             <button
               type="button"
               onClick={handleDeleteClick}

@@ -1,4 +1,4 @@
-import { Pin, PinOff, Trash2, X } from 'lucide-react';
+import { Eye, EyeOff, Pin, PinOff, Trash2, X } from 'lucide-react';
 import { getNoteColor } from '../utils/colors';
 import { ColorPicker } from './ColorPicker';
 import { LabelPicker } from './LabelPicker';
@@ -8,6 +8,7 @@ export function NoteCard({
   availableLabels = [],
   onSelect,
   onTogglePin,
+  onToggleHidden,
   onChangeColor,
   onChangeLabels,
   onDelete,
@@ -106,6 +107,18 @@ export function NoteCard({
             availableLabels={availableLabels}
             onChangeLabels={(nextLabels) => onChangeLabels(note.id, nextLabels)}
           />
+          <button
+            type="button"
+            onClick={() => onToggleHidden(note.id)}
+            aria-label={note.isHidden ? 'Gizliden çıkar' : 'Gizle'}
+            aria-pressed={Boolean(note.isHidden)}
+            title={note.isHidden ? 'Gizliden çıkar' : 'Gizle'}
+            className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/8 focus-visible:outline-2 focus-visible:outline-amber-500 ${
+              note.isHidden ? 'bg-black/6 text-slate-900' : 'text-slate-600'
+            }`}
+          >
+            {note.isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </button>
         </div>
 
         <button

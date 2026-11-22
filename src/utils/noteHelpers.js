@@ -74,6 +74,17 @@ export function getUniqueLabels(notes) {
 }
 
 /**
+ * Filters notes by hidden state, defaulting missing `isHidden` values to false.
+ */
+export function filterNotesByVisibility(notes, showHidden = false) {
+  if (!Array.isArray(notes)) {
+    return [];
+  }
+  const targetHidden = Boolean(showHidden);
+  return notes.filter((note) => Boolean(note?.isHidden) === targetHidden);
+}
+
+/**
  * Filters notes by selected label and Turkish-locale case-insensitive query across title, content, and labels.
  */
 export function filterNotes(notes, query = '', selectedLabel = null) {

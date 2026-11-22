@@ -5,6 +5,7 @@ import {
   areLabelsEqual,
   createNoteId,
   filterNotes,
+  filterNotesByVisibility,
   getUniqueLabels,
   normalizeLabels,
   partitionNotes,
@@ -13,9 +14,9 @@ import {
 const STORAGE_KEY = 'keep_clone_notes_v1';
 
 /**
- * Manages note CRUD, pin state, color selection, labels, search/label filtering, and localStorage persistence.
+ * Manages note CRUD, pin state, hidden state, color selection, labels, search/label filtering, and localStorage persistence.
  */
-export function useNotes() {
+export function useNotes(showHidden = false) {
   const [rawNotes, setRawNotes] = useLocalStorage(STORAGE_KEY, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLabel, setSelectedLabel] = useState(null);
@@ -24,11 +25,17 @@ export function useNotes() {
     if (!Array.isArray(rawNotes)) return [];
     return rawNotes.map((note) => ({
       ...note,
+      isHidden: Boolean(note?.isHidden),
       labels: normalizeLabels(note?.labels),
     }));
   }, [rawNotes]);
 
-  const availableLabels = useMemo(() => getUniqueLabels(notes), [notes]);
+  const viewNotes = useMemo(
+    () => filterNotesByVisibility(notes, showHidden),
+    [notes, showHidden]
+  );
+
+  const availableLabels = useMemo(() => getUniqueLabels(viewNotes), [viewNotes]);
 
   const activeLabel = useMemo(() => {
     if (!selectedLabel) return null;
@@ -45,7 +52,14 @@ export function useNotes() {
   }, [selectedLabel, activeLabel]);
 
   const addNote = useCallback(
-    ({ title = '', content = '', color = DEFAULT_COLOR_ID, isPinned = false, labels = [] }) => {
+    ({
+      title = '',
+      content = '',
+      color = DEFAULT_COLOR_ID,
+      isPinned = false,
+      isHidden = false,
+      labels = [],
+    }) => {
       const trimmedTitle = title.trim();
       const trimmedContent = content.trim();
 
@@ -60,6 +74,7 @@ export function useNotes() {
         content: trimmedContent,
         color,
         isPinned: Boolean(isPinned),
+        isHidden: Boolean(isHidden),
         labels: normalizeLabels(labels),
         createdAt: now,
         updatedAt: now,
@@ -79,10 +94,13 @@ export function useNotes() {
           if (note.id !== id) return note;
 
           const currentLabels = normalizeLabels(note.labels);
+          const currentHidden = Boolean(note.isHidden);
           const nextTitle = updates.title !== undefined ? updates.title.trim() : note.title;
           const nextContent = updates.content !== undefined ? updates.content.trim() : note.content;
           const nextColor = updates.color !== undefined ? updates.color : note.color;
           const nextPinned = updates.isPinned !== undefined ? Boolean(updates.isPinned) : note.isPinned;
+          const nextHidden =
+            updates.isHidden !== undefined ? Boolean(updates.isHidden) : currentHidden;
           const nextLabels =
             updates.labels !== undefined ? normalizeLabels(updates.labels) : currentLabels;
 
@@ -91,6 +109,7 @@ export function useNotes() {
             nextContent !== note.content ||
             nextColor !== note.color ||
             nextPinned !== note.isPinned ||
+            nextHidden !== currentHidden ||
             !areLabelsEqual(currentLabels, nextLabels);
 
           if (!hasChanged) return note;
@@ -101,6 +120,7 @@ export function useNotes() {
             content: nextContent,
             color: nextColor,
             isPinned: nextPinned,
+            isHidden: nextHidden,
             labels: nextLabels,
             updatedAt: Date.now(),
           };
@@ -124,6 +144,20 @@ export function useNotes() {
         return list.map((note) =>
           note.id === id
             ? { ...note, isPinned: !note.isPinned, updatedAt: Date.now() }
+            : note
+        );
+      });
+    },
+    [setRawNotes]
+  );
+
+  const toggleHidden = useCallback(
+    (id) => {
+      setRawNotes((prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        return list.map((note) =>
+          note.id === id
+            ? { ...note, isHidden: !Boolean(note.isHidden), updatedAt: Date.now() }
             : note
         );
       });
@@ -166,8 +200,8 @@ export function useNotes() {
   );
 
   const filteredNotes = useMemo(
-    () => filterNotes(notes, searchQuery, activeLabel),
-    [notes, searchQuery, activeLabel]
+    () => filterNotes(viewNotes, searchQuery, activeLabel),
+    [viewNotes, searchQuery, activeLabel]
   );
 
   const { pinnedNotes, otherNotes } = useMemo(
@@ -177,6 +211,7 @@ export function useNotes() {
 
   return {
     notes,
+    viewNotes,
     pinnedNotes,
     otherNotes,
     availableLabels,
@@ -188,6 +223,7 @@ export function useNotes() {
     updateNote,
     deleteNote,
     togglePin,
+    toggleHidden,
     changeColor,
     changeLabels,
   };
